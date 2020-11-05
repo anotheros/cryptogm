@@ -5,8 +5,8 @@
 package tls_test
 
 import (
-	"github.com/cetcxinlian/cryptogm/tls"
-	"github.com/cetcxinlian/cryptogm/x509"
+	"github.com/anotheros/cryptogm/tls"
+	"github.com/anotheros/cryptogm/x509"
 	"log"
 )
 

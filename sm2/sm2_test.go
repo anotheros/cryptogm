@@ -12,7 +12,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
-	"github.com/cetcxinlian/crypto/sm/sm3"
+	"github.com/anotheros/crypto/sm/sm3"
 	"io"
 	"math/big"
 	"reflect"
