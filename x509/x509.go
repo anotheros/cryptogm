@@ -610,8 +610,6 @@ var (
 
 func getPublicKeyAlgorithmFromOID(oid asn1.ObjectIdentifier) PublicKeyAlgorithm {
 	switch {
-	case oid.Equal(oidPublicKeyECDSA):
-		return SM2
 	case oid.Equal(oidPublicKeyRSA):
 		return RSA
 	case oid.Equal(oidPublicKeyDSA):
