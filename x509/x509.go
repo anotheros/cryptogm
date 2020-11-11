@@ -70,6 +70,19 @@ func ParsePKIXPublicKey(derBytes []byte) (pub interface{}, err error) {
 
 func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorithm pkix.AlgorithmIdentifier, err error) {
 	switch pub := pub.(type) {
+	case *sm2.PublicKey:
+		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		oid, ok := oidFromNamedCurve(pub.Curve)
+		if !ok {
+			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported SM2 curve")
+		}
+		publicKeyAlgorithm.Algorithm = oidPublicKeySM2
+		var paramBytes []byte
+		paramBytes, err = asn1.Marshal(oid)
+		if err != nil {
+			return
+		}
+		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
 	case *rsa.PublicKey:
 		publicKeyBytes, err = asn1.Marshal(pkcs1PublicKey{
 			N: pub.N,
@@ -89,19 +102,6 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 		oid, ok := oidFromNamedCurve(pub.Curve)
 		if !ok {
 			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported elliptic curve")
-		}
-		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
-		var paramBytes []byte
-		paramBytes, err = asn1.Marshal(oid)
-		if err != nil {
-			return
-		}
-		publicKeyAlgorithm.Parameters.FullBytes = paramBytes
-	case *sm2.PublicKey:
-		publicKeyBytes = elliptic.Marshal(pub.Curve, pub.X, pub.Y)
-		oid, ok := oidFromNamedCurve(pub.Curve)
-		if !ok {
-			return nil, pkix.AlgorithmIdentifier{}, errors.New("x509: unsupported SM2 curve")
 		}
 		publicKeyAlgorithm.Algorithm = oidPublicKeyECDSA
 		var paramBytes []byte
@@ -171,7 +171,7 @@ type dsaSignature struct {
 }
 
 type ecdsaSignature dsaSignature
-
+type sm2Signature dsaSignature
 type validity struct {
 	NotBefore, NotAfter time.Time
 }
@@ -610,6 +610,8 @@ var (
 
 func getPublicKeyAlgorithmFromOID(oid asn1.ObjectIdentifier) PublicKeyAlgorithm {
 	switch {
+	case oid.Equal(oidPublicKeyECDSA):
+		return SM2
 	case oid.Equal(oidPublicKeyRSA):
 		return RSA
 	case oid.Equal(oidPublicKeyDSA):
@@ -951,6 +953,7 @@ func (c *Certificate) CheckSignatureFrom(parent *Certificate) error {
 	}
 
 	if parent.PublicKeyAlgorithm == UnknownPublicKeyAlgorithm {
+		fmt.Println("parent.PublicKeyAlgorithm == UnknownPublicKeyAlgorithm")
 		return ErrUnsupportedAlgorithm
 	}
 
@@ -983,10 +986,12 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 	case SM2WithSM3: // SM3WithRSA reserve
 		hashType = SM3
 	default:
+		fmt.Println("default:=========================")
 		return ErrUnsupportedAlgorithm
 	}
 
 	if !hashType.Available() {
+		fmt.Println("!hashType.Available() :=========================")
 		return ErrUnsupportedAlgorithm
 	}
 	fnHash := func() []byte {
@@ -994,7 +999,24 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		h.Write(signed)
 		return h.Sum(nil)
 	}
+	fmt.Println("=============================>>>>>>>>>>>>>>>>")
+	fmt.Println(reflect.TypeOf(publicKey))
 	switch pub := publicKey.(type) {
+	case *sm2.PublicKey:
+		sm2Sig := new(sm2Signature)
+		if rest, err := asn1.Unmarshal(signature, sm2Sig); err != nil {
+			return err
+		} else if len(rest) != 0 {
+			return errors.New("x509: trailing data after sm2 signature")
+		}
+		if sm2Sig.R.Sign() <= 0 || sm2Sig.S.Sign() <= 0 {
+			return errors.New("x509: sm2 signature contained zero or negative values")
+		}
+		if !sm2.Verify(pub, signed, sm2Sig.R, sm2Sig.S) {
+			return errors.New("x509: sm2 verification failure")
+		}
+
+		return
 	case *rsa.PublicKey:
 		if algo.isRSAPSS() {
 			return rsa.VerifyPSS(pub, crypto.Hash(hashType), fnHash(), signature, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
@@ -1025,23 +1047,9 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		if ecdsaSig.R.Sign() <= 0 || ecdsaSig.S.Sign() <= 0 {
 			return errors.New("x509: ECDSA signature contained zero or negative values")
 		}
-		switch pub.Curve {
-		case sm2.P256Sm2():
-			sm2pub := &sm2.PublicKey{
-				Curve: pub.Curve,
-				X:     pub.X,
-				Y:     pub.Y,
-			}
-			if !sm2.Verify(sm2pub, signed, ecdsaSig.R, ecdsaSig.S) {
-				return errors.New("x509: SM2 verification failure")
-			}
-		default:
-			if !ecdsa.Verify(pub, fnHash(), ecdsaSig.R, ecdsaSig.S) {
-				return errors.New("x509: ECDSA verification failure")
-			}
-		}
 		return
 	}
+	fmt.Println("return :=========================")
 	return ErrUnsupportedAlgorithm
 }
 
