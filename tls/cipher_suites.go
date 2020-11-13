@@ -15,7 +15,7 @@ import (
 	"github.com/anotheros/cryptogm/x509"
 	"hash"
 
-	"golang_org/x/crypto/chacha20poly1305"
+	"github.com/anotheros/golang_org/x/crypto/chacha20poly1305"
 )
 
 // a keyAgreement implements the client and server side of a TLS key agreement
