@@ -2575,3 +2575,18 @@ func CreateCertificateToPem(FileName string, template, parent *Certificate, pubK
 	}
 	return true, nil
 }
+
+func Pem2Cert(b []byte) (*Certificate, error) {
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil, fmt.Errorf("credentials: failed to decode cert pem")
+	}
+	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+		return nil, fmt.Errorf("credentials: block type error")
+	}
+	cert, err := ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("credentials: parse cert error : %v", err)
+	}
+	return cert, nil
+}
