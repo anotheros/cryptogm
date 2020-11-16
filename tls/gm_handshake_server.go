@@ -251,7 +251,7 @@ func (hs *serverHandshakeStateGM) readClientHello() (isResume bool, err error) {
 
 	if hs.suite == nil {
 		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("tls: no cipher suite supported by both client and server")
+		return false, errors.New("gm tls: no cipher suite supported by both client and server")
 	}
 
 	// See https://tools.ietf.org/html/rfc7507.
