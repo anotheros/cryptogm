@@ -62,7 +62,6 @@ func pickSignatureAlgorithm(pubkey crypto.PublicKey, peerSigAlgs, ourSigAlgs []S
 			if sigType == signatureECDSA {
 				return sigAlg, sigType, hashAlg, nil
 			}
-
 		case *sm2.PublicKey:
 			if sigType == signatureECDSA {
 				return sigAlg, sigType, hashAlg, nil
@@ -110,7 +109,7 @@ func verifyHandshakeSignature(sigType uint8, pubkey crypto.PublicKey, hashFunc c
 		if err := rsa.VerifyPSS(pubKey, hashFunc, digest, sig, signOpts); err != nil {
 			return err
 		}
-	case signatureSM2:
+		case signatureSM2:
 		pubKey, ok := pubkey.(*sm2.PublicKey)
 		if !ok {
 			return errors.New("tls: SM2 signing requires a SM2 public key")

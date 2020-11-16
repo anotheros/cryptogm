@@ -266,7 +266,7 @@ Curves:
 
 	if hs.suite == nil {
 		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("tls: no cipher suite supported by both client and server")
+		return false, errors.New("anotheros tls: no cipher suite supported by both client and server")
 	}
 
 	// See https://tools.ietf.org/html/rfc7507.
